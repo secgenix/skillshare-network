@@ -79,11 +79,7 @@ async def find_matches(
 
     # Берём кандидатов прошедших SQL-фильтры; 500 — защита от взрыва при большой БД.
     # Финальный limit применяем в конце после score-фильтрации и дедупа по категориям.
-    candidates: list[User] = list(
-        await db.scalars(
-            select(User).where(*conditions).limit(500)
-        )
-    )
+    candidates: list[User] = list(await db.scalars(select(User).where(*conditions).limit(500)))
     if not candidates:
         return []
 

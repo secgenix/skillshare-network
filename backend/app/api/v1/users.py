@@ -8,9 +8,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db_session
+from app.models.review import Review
 from app.models.skill import Skill, UserSkillsOffered, UserSkillsWanted
 from app.models.user import User
-from app.models.review import Review
 from app.schemas.exchange import ReviewOut
 from app.schemas.user import PasswordChangeRequest, UserProfile, UserSkillsPayload, UserUpdate
 from app.services.auth import hash_password, verify_password
@@ -153,7 +153,9 @@ async def get_my_reviews(
         name_map = {r.id: r.full_name for r in rows}
 
     return [
-        ReviewOut.model_validate(r).model_copy(update={"reviewer_name": name_map.get(r.reviewer_id)})
+        ReviewOut.model_validate(r).model_copy(
+            update={"reviewer_name": name_map.get(r.reviewer_id)}
+        )
         for r in reviews
     ]
 

@@ -35,13 +35,11 @@ from app.models import (
     Review,
     Skill,
     SkillCategory,
-    Task,
     User,
     UserRole,
     UserSkillsOffered,
     UserSkillsWanted,
 )
-from app.models.listing import Listing, ListingInterest, ListingInterestStatus, ListingStatus
 
 DATABASE_URL = os.getenv(
     "SSN_DATABASE_URL",
@@ -60,63 +58,100 @@ def _hash(pw: str) -> str:
 
 CATEGORIES: dict[str, list[str]] = {
     "Программирование": [
-        "Python", "JavaScript", "TypeScript", "Go", "Rust",
-        "React", "SQL", "Docker", "Machine Learning", "C++",
+        "Python",
+        "JavaScript",
+        "TypeScript",
+        "Go",
+        "Rust",
+        "React",
+        "SQL",
+        "Docker",
+        "Machine Learning",
+        "C++",
     ],
     "Дизайн": [
-        "Figma", "Photoshop", "Illustrator", "UI/UX Design",
-        "Motion Design", "3D Моделирование", "Брендинг",
+        "Figma",
+        "Photoshop",
+        "Illustrator",
+        "UI/UX Design",
+        "Motion Design",
+        "3D Моделирование",
+        "Брендинг",
     ],
     "Языки": [
-        "Английский", "Испанский", "Китайский",
-        "Французский", "Немецкий", "Японский", "Итальянский",
+        "Английский",
+        "Испанский",
+        "Китайский",
+        "Французский",
+        "Немецкий",
+        "Японский",
+        "Итальянский",
     ],
     "Маркетинг": [
-        "SEO", "SMM", "Контент-маркетинг",
-        "Email-маркетинг", "Таргетированная реклама", "Веб-аналитика",
+        "SEO",
+        "SMM",
+        "Контент-маркетинг",
+        "Email-маркетинг",
+        "Таргетированная реклама",
+        "Веб-аналитика",
     ],
     "Музыка": [
-        "Гитара", "Пианино", "Вокал",
-        "Теория музыки", "Битмейкинг", "DJ", "Сведение и мастеринг",
+        "Гитара",
+        "Пианино",
+        "Вокал",
+        "Теория музыки",
+        "Битмейкинг",
+        "DJ",
+        "Сведение и мастеринг",
     ],
     "Бизнес": [
-        "Управление проектами", "Финансовый анализ",
-        "Переговоры", "Стартапы", "Excel и таблицы",
+        "Управление проектами",
+        "Финансовый анализ",
+        "Переговоры",
+        "Стартапы",
+        "Excel и таблицы",
     ],
     "Фото и видео": [
-        "Фотография", "Видеомонтаж", "Дрон-съёмка",
-        "Цветокоррекция", "YouTube-производство",
+        "Фотография",
+        "Видеомонтаж",
+        "Дрон-съёмка",
+        "Цветокоррекция",
+        "YouTube-производство",
     ],
     "Спорт и здоровье": [
-        "Йога", "CrossFit", "Плавание",
-        "Бег", "Бокс", "Питание и нутрициология",
+        "Йога",
+        "CrossFit",
+        "Плавание",
+        "Бег",
+        "Бокс",
+        "Питание и нутрициология",
     ],
 }
 
 # Конкретные навыки (offered, wanted) — без рандома, гарантированные совпадения
 ARCHETYPES_SKILLS: list[tuple[list[str], list[str]]] = [
     # Python-разработчик
-    (["Python", "SQL", "Docker"],            ["Figma", "UI/UX Design"]),
+    (["Python", "SQL", "Docker"], ["Figma", "UI/UX Design"]),
     # Frontend-разработчик
-    (["React", "JavaScript", "TypeScript"],  ["Python", "SMM"]),
+    (["React", "JavaScript", "TypeScript"], ["Python", "SMM"]),
     # ML-инженер
-    (["Python", "Machine Learning", "SQL"],  ["Английский", "Figma"]),
+    (["Python", "Machine Learning", "SQL"], ["Английский", "Figma"]),
     # UI/UX-дизайнер
     (["Figma", "UI/UX Design", "Брендинг"], ["Python", "Контент-маркетинг"]),
     # Графический дизайнер
-    (["Photoshop", "Illustrator", "Figma"],  ["React", "Английский"]),
+    (["Photoshop", "Illustrator", "Figma"], ["React", "Английский"]),
     # SEO-специалист
-    (["SEO", "Веб-аналитика"],               ["Figma", "Python"]),
+    (["SEO", "Веб-аналитика"], ["Figma", "Python"]),
     # SMM-менеджер
-    (["SMM", "Контент-маркетинг"],           ["Figma", "Python"]),
+    (["SMM", "Контент-маркетинг"], ["Figma", "Python"]),
     # Преподаватель английского
-    (["Английский", "Французский"],          ["Python", "SEO"]),
+    (["Английский", "Французский"], ["Python", "SEO"]),
     # Преподаватель испанского
-    (["Английский", "Испанский"],            ["Figma", "SMM"]),
+    (["Английский", "Испанский"], ["Figma", "SMM"]),
     # Гитарист / музыкант
-    (["Гитара", "Вокал", "Теория музыки"],   ["SMM", "Python"]),
+    (["Гитара", "Вокал", "Теория музыки"], ["SMM", "Python"]),
     # Продюсер / битмейкер
-    (["Битмейкинг", "DJ"],                   ["Figma", "Контент-маркетинг"]),
+    (["Битмейкинг", "DJ"], ["Figma", "Контент-маркетинг"]),
     # Проект-менеджер
     (["Управление проектами", "Переговоры"], ["Python", "Figma"]),
     # Финансист
@@ -124,33 +159,101 @@ ARCHETYPES_SKILLS: list[tuple[list[str], list[str]]] = [
     # Видеограф
     (["Фотография", "Видеомонтаж", "Цветокоррекция"], ["SMM", "Python"]),
     # Тренер по йоге / нутрициолог
-    (["Йога", "Питание и нутрициология"],    ["Python", "Английский"]),
+    (["Йога", "Питание и нутрициология"], ["Python", "Английский"]),
     # Фитнес-тренер
-    (["CrossFit", "Бокс"],                   ["Figma", "Контент-маркетинг"]),
+    (["CrossFit", "Бокс"], ["Figma", "Контент-маркетинг"]),
 ]
 
 FIRST_NAMES_M = [
-    "Александр", "Михаил", "Дмитрий", "Иван", "Андрей",
-    "Алексей", "Максим", "Николай", "Сергей", "Артём",
-    "Кирилл", "Роман", "Владимир", "Павел", "Илья",
-    "Денис", "Евгений", "Антон", "Виктор", "Тимур",
-    "Глеб", "Егор", "Фёдор", "Константин", "Вадим",
+    "Александр",
+    "Михаил",
+    "Дмитрий",
+    "Иван",
+    "Андрей",
+    "Алексей",
+    "Максим",
+    "Николай",
+    "Сергей",
+    "Артём",
+    "Кирилл",
+    "Роман",
+    "Владимир",
+    "Павел",
+    "Илья",
+    "Денис",
+    "Евгений",
+    "Антон",
+    "Виктор",
+    "Тимур",
+    "Глеб",
+    "Егор",
+    "Фёдор",
+    "Константин",
+    "Вадим",
 ]
 FIRST_NAMES_F = [
-    "Анастасия", "Мария", "Екатерина", "Ольга", "Наталья",
-    "Татьяна", "Анна", "Елена", "Дарья", "Юлия",
-    "Ирина", "Светлана", "Алина", "Виктория", "Ксения",
-    "Полина", "Валерия", "Марина", "Вероника", "Надежда",
+    "Анастасия",
+    "Мария",
+    "Екатерина",
+    "Ольга",
+    "Наталья",
+    "Татьяна",
+    "Анна",
+    "Елена",
+    "Дарья",
+    "Юлия",
+    "Ирина",
+    "Светлана",
+    "Алина",
+    "Виктория",
+    "Ксения",
+    "Полина",
+    "Валерия",
+    "Марина",
+    "Вероника",
+    "Надежда",
 ]
 LAST_NAMES = [
-    "Иванов", "Смирнов", "Кузнецов", "Попов", "Соколов",
-    "Лебедев", "Козлов", "Новиков", "Морозов", "Петров",
-    "Волков", "Соловьёв", "Васильев", "Зайцев", "Павлов",
-    "Семёнов", "Голубев", "Виноградов", "Богданов", "Воробьёв",
-    "Фёдоров", "Михайлов", "Беляев", "Тарасов", "Белов",
-    "Комаров", "Орлов", "Киселёв", "Макаров", "Андреев",
-    "Ковалёв", "Ильин", "Гусев", "Титов", "Кузьмин",
-    "Баранов", "Куликов", "Степанов", "Яковлев", "Борисов",
+    "Иванов",
+    "Смирнов",
+    "Кузнецов",
+    "Попов",
+    "Соколов",
+    "Лебедев",
+    "Козлов",
+    "Новиков",
+    "Морозов",
+    "Петров",
+    "Волков",
+    "Соловьёв",
+    "Васильев",
+    "Зайцев",
+    "Павлов",
+    "Семёнов",
+    "Голубев",
+    "Виноградов",
+    "Богданов",
+    "Воробьёв",
+    "Фёдоров",
+    "Михайлов",
+    "Беляев",
+    "Тарасов",
+    "Белов",
+    "Комаров",
+    "Орлов",
+    "Киселёв",
+    "Макаров",
+    "Андреев",
+    "Ковалёв",
+    "Ильин",
+    "Гусев",
+    "Титов",
+    "Кузьмин",
+    "Баранов",
+    "Куликов",
+    "Степанов",
+    "Яковлев",
+    "Борисов",
 ]
 
 CHAT_MESSAGES = [
@@ -187,9 +290,7 @@ def _gen_name(i: int) -> str:
         first = random.choice(FIRST_NAMES_F)
         last = random.choice(LAST_NAMES)
         # феминизируем фамилию
-        if last.endswith(("ов", "ев", "ёв")):
-            last = last + "а"
-        elif last.endswith("ин"):
+        if last.endswith(("ов", "ев", "ёв")) or last.endswith("ин"):
             last = last + "а"
     else:
         first = random.choice(FIRST_NAMES_M)
@@ -200,13 +301,15 @@ def _gen_name(i: int) -> str:
 async def seed(db: AsyncSession) -> None:
     # ── 1. Очистка ────────────────────────────────────────────────────────────
     print("🗑️  Очищаем базу данных…")
-    await db.execute(text(
-        "TRUNCATE TABLE reviews, messages, tasks, chats, "
-        "exchange_participants, exchanges, listing_interests, listings, "
-        "user_skills_offered, user_skills_wanted, "
-        "skills, skill_categories, users "
-        "RESTART IDENTITY CASCADE"
-    ))
+    await db.execute(
+        text(
+            "TRUNCATE TABLE reviews, messages, tasks, chats, "
+            "exchange_participants, exchanges, listing_interests, listings, "
+            "user_skills_offered, user_skills_wanted, "
+            "skills, skill_categories, users "
+            "RESTART IDENTITY CASCADE"
+        )
+    )
     await db.flush()
     print("   ✓ Таблицы очищены")
 
@@ -269,21 +372,25 @@ async def seed(db: AsyncSession) -> None:
         for name in offer_names:
             sk = skill_by_name.get(name)
             if sk:
-                db.add(UserSkillsOffered(
-                    user_id=user.id,
-                    skill_id=sk.id,
-                    level=random.randint(2, 3),
-                ))
+                db.add(
+                    UserSkillsOffered(
+                        user_id=user.id,
+                        skill_id=sk.id,
+                        level=random.randint(2, 3),
+                    )
+                )
 
         offered_ids = {skill_by_name[n].id for n in offer_names if n in skill_by_name}
         for name in want_names:
             sk = skill_by_name.get(name)
             if sk and sk.id not in offered_ids:
-                db.add(UserSkillsWanted(
-                    user_id=user.id,
-                    skill_id=sk.id,
-                    desired_level=random.randint(1, 3),
-                ))
+                db.add(
+                    UserSkillsWanted(
+                        user_id=user.id,
+                        skill_id=sk.id,
+                        desired_level=random.randint(1, 3),
+                    )
+                )
 
         users.append(user)
 
@@ -351,11 +458,13 @@ async def seed(db: AsyncSession) -> None:
         # Сообщения
         for m_idx in range(random.randint(4, 10)):
             sender = ua if m_idx % 2 == 0 else ub
-            db.add(Message(
-                chat_id=chat.id,
-                sender_id=sender.id,
-                content=random.choice(CHAT_MESSAGES),
-            ))
+            db.add(
+                Message(
+                    chat_id=chat.id,
+                    sender_id=sender.id,
+                    content=random.choice(CHAT_MESSAGES),
+                )
+            )
 
         # Отзывы для завершённых
         if is_done:
@@ -363,20 +472,24 @@ async def seed(db: AsyncSession) -> None:
             r_b = random.randint(3, 5)
             pool_a = REVIEW_POSITIVE if r_a >= 4 else REVIEW_NEUTRAL
             pool_b = REVIEW_POSITIVE if r_b >= 4 else REVIEW_NEUTRAL
-            db.add(Review(
-                exchange_id=ex.id,
-                reviewer_id=ua.id,
-                reviewed_id=ub.id,
-                rating=r_a,
-                comment=random.choice(pool_a),
-            ))
-            db.add(Review(
-                exchange_id=ex.id,
-                reviewer_id=ub.id,
-                reviewed_id=ua.id,
-                rating=r_b,
-                comment=random.choice(pool_b),
-            ))
+            db.add(
+                Review(
+                    exchange_id=ex.id,
+                    reviewer_id=ua.id,
+                    reviewed_id=ub.id,
+                    rating=r_a,
+                    comment=random.choice(pool_a),
+                )
+            )
+            db.add(
+                Review(
+                    exchange_id=ex.id,
+                    reviewer_id=ub.id,
+                    reviewed_id=ua.id,
+                    rating=r_b,
+                    comment=random.choice(pool_b),
+                )
+            )
             completed += 1
         else:
             active += 1
@@ -387,10 +500,13 @@ async def seed(db: AsyncSession) -> None:
 
     # ── 6. Пересчёт рейтингов ─────────────────────────────────────────────────
     print("⭐  Пересчитываем рейтинги пользователей…")
-    rows = list(await db.execute(
-        select(Review.reviewed_id, func.avg(Review.rating).label("avg"))
-        .group_by(Review.reviewed_id)
-    ))
+    rows = list(
+        await db.execute(
+            select(Review.reviewed_id, func.avg(Review.rating).label("avg")).group_by(
+                Review.reviewed_id
+            )
+        )
+    )
     for row in rows:
         u = await db.get(User, row.reviewed_id)
         if u:
@@ -415,9 +531,8 @@ async def seed(db: AsyncSession) -> None:
 
 
 async def main() -> None:
-    async with Session() as db:
-        async with db.begin():
-            await seed(db)
+    async with Session() as db, db.begin():
+        await seed(db)
 
 
 if __name__ == "__main__":

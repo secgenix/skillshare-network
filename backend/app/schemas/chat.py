@@ -3,7 +3,6 @@ from datetime import datetime
 from pydantic import BaseModel
 
 from app.models import ChatStatus
-from app.schemas.message import MessageRead
 
 
 class ChatRead(BaseModel):

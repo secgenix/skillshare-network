@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import Select, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,14 +14,23 @@ from app.models.user import User
 from app.schemas.listing import (
     ListingCreate,
     ListingInterestCreate,
+    ListingInterestDetailOut,
     ListingInterestOut,
     ListingOut,
+    ListingUpdate,
 )
 
 router = APIRouter(prefix="/listings", tags=["listings"])
 
 DbSession = Annotated[AsyncSession, Depends(get_db_session)]
 CurrentUser = Annotated[User, Depends(get_current_user)]
+
+
+def listing_to_out(listing: Listing, author_full_name: str | None) -> ListingOut:
+    """Собирает ListingOut из ORM-объекта, подмешивая имя автора из JOIN."""
+    return ListingOut.model_validate(listing).model_copy(
+        update={"author_full_name": author_full_name}
+    )
 
 
 @router.post("", response_model=ListingOut, status_code=status.HTTP_201_CREATED)
@@ -166,28 +175,6 @@ async def get_listings(
     stmt = stmt.order_by(Listing.created_at.desc())
     rows = await db.execute(stmt)
     return [listing_to_out(listing, full_name) for listing, full_name in rows.all()]
-
-
-@router.get(
-    "/{listing_id}/interests",
-    response_model=list[ListingInterestOut],
-)
-async def get_listing_interests(
-    listing_id: int,
-    db: DbSession,
-    current_user: CurrentUser,
-) -> list[ListingInterest]:
-    listing = await db.get(Listing, listing_id)
-    if listing is None:
-        raise HTTPException(status_code=404, detail="Listing not found")
-    if listing.author_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Only listing author can view interests")
-    result = await db.scalars(
-        select(ListingInterest)
-        .where(ListingInterest.listing_id == listing_id)
-        .order_by(ListingInterest.created_at.desc())
-    )
-    return list(result)
 
 
 @router.post(

@@ -4,14 +4,13 @@ from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import Select, and_, func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import get_current_user, get_db_session
 from app.crud.chat import create_chat, get_chat_by_exchange
 from app.models.exchange import Exchange, ExchangeParticipant, ExchangeStatus
-from app.ws.manager import manager
 from app.models.listing import Listing, ListingInterest, ListingInterestStatus
 from app.models.message import Message
 from app.models.review import Review
@@ -27,6 +26,7 @@ from app.schemas.exchange import (
     ReviewCreate,
     ReviewOut,
 )
+from app.ws.manager import manager
 
 router = APIRouter(prefix="/exchanges", tags=["exchanges"])
 
@@ -82,18 +82,24 @@ async def _broadcast_exchange_update(
 ) -> None:
     """Рассылает актуальное состояние сделки всем WS-клиентам чата."""
     from app.crud.chat import get_chat_by_exchange as _get_chat
+
     chat = await _get_chat(db, exchange.id)
     if chat is None:
         return
     partner_user = await db.get(User, partner_id) if partner_id else None
-    out = ExchangeOut.model_validate(exchange).model_copy(update={
-        "partner_id": partner_id,
-        "partner_name": partner_user.full_name if partner_user else None,
-    })
-    await manager.broadcast(chat.id, {
-        "type": "exchange_update",
-        "exchange": out.model_dump(mode="json"),
-    })
+    out = ExchangeOut.model_validate(exchange).model_copy(
+        update={
+            "partner_id": partner_id,
+            "partner_name": partner_user.full_name if partner_user else None,
+        }
+    )
+    await manager.broadcast(
+        chat.id,
+        {
+            "type": "exchange_update",
+            "exchange": out.model_dump(mode="json"),
+        },
+    )
 
 
 @router.post("/listing/{listing_id}/accept-interest", response_model=ExchangeOut)
@@ -206,10 +212,12 @@ async def create_direct_exchange(
             if existing.initiator_id == current_user.id
             else existing.initiator_id
         )
-        return ExchangeOut.model_validate(existing).model_copy(update={
-            "partner_id": partner_id,
-            "partner_name": target.full_name,
-        })
+        return ExchangeOut.model_validate(existing).model_copy(
+            update={
+                "partner_id": partner_id,
+                "partner_name": target.full_name,
+            }
+        )
 
     exchange = Exchange(
         initiator_id=current_user.id,
@@ -227,48 +235,20 @@ async def create_direct_exchange(
 
     await create_chat(db, exchange.id)
 
-    return ExchangeOut.model_validate(exchange).model_copy(update={
-        "partner_id": payload.target_user_id,
-        "partner_name": target.full_name,
-    })
-
-
-def _exchange_list_out(
-    exchange: Exchange,
-    *,
-    listing_title: str | None,
-    partner_id: int | None,
-    partner_full_name: str | None,
-) -> ExchangeListOut:
-    return ExchangeListOut(
-        id=exchange.id,
-        initiator_id=exchange.initiator_id,
-        listing_id=exchange.listing_id,
-        status=exchange.status,
-        is_chain=exchange.is_chain,
-        created_at=exchange.created_at,
-        completed_at=exchange.completed_at,
-        completed_by_initiator=exchange.completed_by_initiator,
-        completed_by_partner=exchange.completed_by_partner,
-        listing_title=listing_title,
-        partner_id=partner_id,
-        partner_full_name=partner_full_name,
+    return ExchangeOut.model_validate(exchange).model_copy(
+        update={
+            "partner_id": payload.target_user_id,
+            "partner_name": target.full_name,
+        }
     )
 
 
-@router.get("", response_model=list[ExchangeListOut])
-async def get_my_exchanges(db: DbSession, current_user: CurrentUser) -> list[ExchangeListOut]:
-    stmt: Select[tuple[Exchange]] = (
-        select(Exchange)
-        .outerjoin(
-            ListingInterest,
-            and_(
-                ListingInterest.listing_id == Exchange.listing_id,
-                ListingInterest.status == ListingInterestStatus.accepted,
-            ),
-        )
-        .where(
-            or_(
+@router.get("", response_model=list[ExchangeOut])
+async def get_my_exchanges(db: DbSession, current_user: CurrentUser) -> list[ExchangeOut]:
+    # ID сделок, где пользователь — инициатор
+    initiator_ids = set(
+        await db.scalars(
+            select(Exchange.id).where(
                 Exchange.initiator_id == current_user.id,
                 Exchange.is_deleted.is_(False),
             )
@@ -277,8 +257,9 @@ async def get_my_exchanges(db: DbSession, current_user: CurrentUser) -> list[Exc
     # Получаем ID сделок где пользователь участник (через ExchangeParticipant)
     participant_ids = set(
         await db.scalars(
-            select(ExchangeParticipant.exchange_id)
-            .where(ExchangeParticipant.user_id == current_user.id)
+            select(ExchangeParticipant.exchange_id).where(
+                ExchangeParticipant.user_id == current_user.id
+            )
         )
     )
     # Fallback: получаем ID сделок где пользователь responder через ListingInterest (старые сделки)
@@ -327,24 +308,23 @@ async def get_my_exchanges(db: DbSession, current_user: CurrentUser) -> list[Exc
         return initiator_by_id.get(ex_id)
 
     # Батч-запрос имён: нужны и инициаторы, и не-инициаторы
-    all_user_ids = (
-        set(initiator_by_id.values())
-        | {pid for pid in non_initiator_map.values() if pid is not None}
-    )
+    all_user_ids = set(initiator_by_id.values()) | {
+        pid for pid in non_initiator_map.values() if pid is not None
+    }
     user_name_map: dict[int, str | None] = {}
     if all_user_ids:
         name_rows = list(
-            await db.execute(
-                select(User.id, User.full_name).where(User.id.in_(all_user_ids))
-            )
+            await db.execute(select(User.id, User.full_name).where(User.id.in_(all_user_ids)))
         )
         user_name_map = {r.id: r.full_name for r in name_rows}
 
     return [
-        ExchangeOut.model_validate(ex).model_copy(update={
-            "partner_id": perspective_partner(ex.id),
-            "partner_name": user_name_map.get(perspective_partner(ex.id)),
-        })
+        ExchangeOut.model_validate(ex).model_copy(
+            update={
+                "partner_id": perspective_partner(ex.id),
+                "partner_name": user_name_map.get(perspective_partner(ex.id)),
+            }
+        )
         for ex in exchanges
     ]
 
@@ -568,7 +548,9 @@ async def get_exchange_reviews(
         name_map = {r.id: r.full_name for r in rows}
 
     return [
-        ReviewOut.model_validate(r).model_copy(update={"reviewer_name": name_map.get(r.reviewer_id)})
+        ReviewOut.model_validate(r).model_copy(
+            update={"reviewer_name": name_map.get(r.reviewer_id)}
+        )
         for r in reviews
     ]
 

@@ -46,9 +46,7 @@ async def get_current_user(
             detail="Invalid token payload",
         )
 
-    user = await db.scalar(
-        select(User).where(User.id == int(user_id), User.is_deleted.is_(False))
-    )
+    user = await db.scalar(select(User).where(User.id == int(user_id), User.is_deleted.is_(False)))
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

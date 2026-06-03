@@ -12,14 +12,25 @@ from app.models.exchange import Exchange, ExchangeParticipant, ExchangeStatus
 from app.models.listing import Listing, ListingStatus
 from app.models.message import Message
 from app.models.user import User
-from app.schemas.admin import AdminExchangeOut, ExchangeStatusPatch, ListingStatusPatch, UserStatusPatch
+from app.schemas.admin import (
+    AdminExchangeOut,
+    ExchangeStatusPatch,
+    ListingStatusPatch,
+    UserStatusPatch,
+)
 
 logger = logging.getLogger("app.admin")
 
 
 def log_admin_action(admin: User, action: str, target: str, target_id: int | None = None) -> None:
     if target_id:
-        logger.info("[ADMIN] admin_id=%d action=%s target=%s target_id=%d", admin.id, action, target, target_id)
+        logger.info(
+            "[ADMIN] admin_id=%d action=%s target=%s target_id=%d",
+            admin.id,
+            action,
+            target,
+            target_id,
+        )
     else:
         logger.info("[ADMIN] admin_id=%d action=%s target=%s", admin.id, action, target)
 
@@ -30,6 +41,7 @@ async def get_users(db: AsyncSession, admin: User, limit: int, offset: int) -> l
         select(User).order_by(User.created_at.desc()).limit(limit).offset(offset)
     )
     return list(result)
+
 
 async def get_user(db: AsyncSession, admin: User, user_id: int) -> User:
     user = await db.get(User, user_id)
@@ -119,10 +131,13 @@ async def get_exchanges(
     exchange_ids = [ex.id for ex in exchanges]
 
     # Батч-запрос участников
-    participant_rows = list(await db.execute(
-        select(ExchangeParticipant.exchange_id, ExchangeParticipant.user_id)
-        .where(ExchangeParticipant.exchange_id.in_(exchange_ids))
-    ))
+    participant_rows = list(
+        await db.execute(
+            select(ExchangeParticipant.exchange_id, ExchangeParticipant.user_id).where(
+                ExchangeParticipant.exchange_id.in_(exchange_ids)
+            )
+        )
+    )
     initiator_by_id = {ex.id: ex.initiator_id for ex in exchanges}
     partner_map: dict[int, int | None] = {ex.id: None for ex in exchanges}
     for exchange_id, user_id in participant_rows:
@@ -133,20 +148,22 @@ async def get_exchanges(
     all_user_ids = set(initiator_by_id.values()) | {pid for pid in partner_map.values() if pid}
     user_name_map: dict[int, str | None] = {}
     if all_user_ids:
-        name_rows = list(await db.execute(
-            select(User.id, User.full_name).where(User.id.in_(all_user_ids))
-        ))
+        name_rows = list(
+            await db.execute(select(User.id, User.full_name).where(User.id.in_(all_user_ids)))
+        )
         user_name_map = {r.id: r.full_name for r in name_rows}
 
     result = []
     for ex in exchanges:
         partner_id = partner_map.get(ex.id)
         result.append(
-            AdminExchangeOut.model_validate(ex).model_copy(update={
-                "initiator_name": user_name_map.get(ex.initiator_id),
-                "partner_id": partner_id,
-                "partner_name": user_name_map.get(partner_id) if partner_id else None,
-            })
+            AdminExchangeOut.model_validate(ex).model_copy(
+                update={
+                    "initiator_name": user_name_map.get(ex.initiator_id),
+                    "partner_id": partner_id,
+                    "partner_name": user_name_map.get(partner_id) if partner_id else None,
+                }
+            )
         )
     return result
 

@@ -26,6 +26,15 @@ class ListingOut(BaseModel):
     seeking_summary: str
     status: ListingStatus
     created_at: datetime
+    author_full_name: str | None = None
+
+
+class ListingUpdate(BaseModel):
+    title: str | None = None
+    description: str | None = None
+    offering_summary: str | None = None
+    seeking_summary: str | None = None
+    status: ListingStatus | None = None
 
 
 class ListingInterestCreate(BaseModel):
@@ -41,3 +50,18 @@ class ListingInterestOut(BaseModel):
     message: str | None
     status: ListingInterestStatus
     created_at: datetime
+
+
+class ListingInterestDetailOut(BaseModel):
+    """Отклик с присоединёнными данными объявления и автора отклика."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    listing_id: int
+    responder_id: int
+    message: str | None
+    status: ListingInterestStatus
+    created_at: datetime
+    listing_title: str
+    responder_full_name: str | None

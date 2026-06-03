@@ -45,8 +45,8 @@ async def register_user(db: AsyncSession, data: UserRegister) -> User:
     db.add(user)
     try:
         await db.flush()
-    except IntegrityError:
-        raise HTTPException(status_code=409, detail="Email уже зарегистрирован")
+    except IntegrityError as exc:
+        raise HTTPException(status_code=409, detail="Email уже зарегистрирован") from exc
     return user
 
 

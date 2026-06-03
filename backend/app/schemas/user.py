@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 
 class UserRegister(BaseModel):
