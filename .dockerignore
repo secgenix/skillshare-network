@@ -1,0 +1,32 @@
+# Build context для backend/Dockerfile теперь — корень репозитория.
+# Исключаем всё, что не нужно образу бэкенда, чтобы контекст был лёгким.
+
+# Frontend (собирается отдельным образом)
+frontend/
+node_modules/
+
+# Python
+.venv
+backend/.venv
+**/__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.ruff_cache
+backend/tests/
+
+# VCS / docs / прочее
+.git
+.gitignore
+.github
+*.md
+Documentation/
+Diogram/
+
+# Секреты и переменные окружения
+.env
+.env.*
+secrets/*.txt
+secrets/*.key
+secrets/*.pem

@@ -36,14 +36,15 @@ services:
   # ── Backend (dev: hot-reload через uvicorn) ──────────────────────────────────
   backend:
     build:
-      context: ./backend
+      context: .               # build context — корень репозитория
+      dockerfile: backend/Dockerfile
       target: builder          # dev использует builder-stage с uv
     profiles: ["backend", "full"]
     command:
       - sh
       - -c
       - ".venv/bin/alembic upgrade head && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
-    env_file: ./backend/.env
+    env_file: ./.env
     environment:
       SSN_ENVIRONMENT: docker
       SSN_DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/skillshare

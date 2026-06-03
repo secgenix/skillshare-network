@@ -1,3 +1,6 @@
+# ВАЖНО: build context — корень репозитория (см. docker-compose*.yml),
+# поэтому пути источников указываются с префиксом backend/.
+#
 # ── Stage 1: builder ──────────────────────────────────────────────────────────
 FROM python:3.12-slim AS builder
 
@@ -27,9 +30,9 @@ WORKDIR /app
 # Копируем только venv из builder — без uv, curl и прочего мусора
 COPY --from=builder /app/.venv /app/.venv
 
-COPY app ./app
-COPY alembic ./alembic
-COPY alembic.ini gunicorn_conf.py entrypoint.sh ./
+COPY backend/app ./app
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini backend/gunicorn_conf.py backend/entrypoint.sh ./
 
 EXPOSE 8000
 

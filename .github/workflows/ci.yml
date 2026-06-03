@@ -10,9 +10,6 @@ jobs:
   backend-lint:
     name: Backend lint & format
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -21,23 +18,20 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: backend/.python-version
+          python-version-file: .python-version
 
       - name: Install deps
         run: uv sync --dev
 
       - name: Ruff lint
-        run: uv run ruff check .
+        run: uv run ruff check backend
 
       - name: Ruff format
-        run: uv run ruff format --check .
+        run: uv run ruff format --check backend
 
   backend-tests:
     name: Backend tests
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
     steps:
       - uses: actions/checkout@v4
 
@@ -46,13 +40,13 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version-file: backend/.python-version
+          python-version-file: .python-version
 
       - name: Install deps
         run: uv sync --dev
 
       - name: Run tests
-        run: uv run pytest tests/ -v
+        run: uv run pytest backend/tests/ -v
 
   # ── Frontend: lint ───────────────────────────────────────────────────────────
   frontend-lint:
@@ -90,7 +84,8 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: .
+          file: backend/Dockerfile
           target: runtime
           push: false
           cache-from: type=gha

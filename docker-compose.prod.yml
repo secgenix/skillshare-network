@@ -35,7 +35,8 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: .
+      dockerfile: backend/Dockerfile
       target: runtime
     environment:
       SSN_ENVIRONMENT: production

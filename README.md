@@ -38,6 +38,9 @@
 
 ## Структура репозитория
 
+- `pyproject.toml`, `uv.lock`, `.python-version`: конфигурация uv-проекта (в корне)
+- `.env`, `.env.example`: переменные окружения (в корне)
+- `main.py`: точка входа для запуска из корня (реэкспортирует `app` из `backend/app`)
 - `backend/`: FastAPI-приложение, DB слой и миграции Alembic
 - `frontend/`: React-приложение (Vite + TailwindCSS)
 - `docker-compose.yml`: PostgreSQL + backend
@@ -46,10 +49,12 @@
 
 Требования: Python 3.12+, [`uv`](https://astral.sh/uv/)
 
+Все команды выполняются **из корня репозитория** (uv-проект и `.env` теперь там):
+
 ```bash
-cd backend
+cp .env.example .env       # один раз — создать локальный .env
 uv sync
-uv run uvicorn app.main:app --reload
+uv run uvicorn main:app --reload
 ```
 
 Открыть:
@@ -59,9 +64,8 @@ uv run uvicorn app.main:app --reload
 ### Ruff
 
 ```bash
-cd backend
-uv run ruff check .
-uv run ruff format .
+uv run ruff check backend
+uv run ruff format backend
 ```
 
 ## Запуск через Docker
@@ -86,11 +90,13 @@ docker compose --profile full down
 
 ## Миграции (Alembic)
 
-Перед миграциями убедитесь, что поднят Postgres и корректен `SSN_DATABASE_URL`.
+Перед миграциями убедитесь, что поднят Postgres и корректен `SSN_DATABASE_URL`
+(берётся из `.env` в корне; дефолт указывает на `localhost:5432`).
+
+`alembic.ini` живёт в `backend/`, поэтому команды Alembic запускаются из этой папки:
 
 ```bash
 cd backend
-cp .env.example .env
 uv run alembic revision --autogenerate -m "init"
 uv run alembic upgrade head
 ```
