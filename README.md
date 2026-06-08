@@ -105,7 +105,7 @@ uv run uvicorn main:app --reload
 
 Открыть:
 - `http://localhost:8000/` (SSR страница)
-- `http://localhost:8000/api/health` (healthcheck)
+- `http://localhost:8000/api/v1/health` (healthcheck)
 
 `uv` сам создаёт и поддерживает виртуальное окружение в `.venv/` — отдельную
 команду `python -m venv` выполнять не нужно. Чтобы войти в окружение вручную:
