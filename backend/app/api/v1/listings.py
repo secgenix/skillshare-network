@@ -33,10 +33,21 @@ def listing_to_out(listing: Listing, author_full_name: str | None) -> ListingOut
     )
 
 
-@router.post("", response_model=ListingOut, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=ListingOut,
+    status_code=status.HTTP_201_CREATED,
+    summary="Создать объявление",
+    responses={
+        201: {"description": "Объявление создано"},
+        401: {"description": "Требуется авторизация"},
+        422: {"description": "Ошибка валидации полей"},
+    },
+)
 async def create_listing(
     payload: ListingCreate, db: DbSession, current_user: CurrentUser
 ) -> ListingOut:
+    """Публикует объявление текущего пользователя: что он предлагает и что ищет взамен."""
     listing = Listing(
         author_id=current_user.id,
         title=payload.title.strip(),
@@ -52,10 +63,16 @@ async def create_listing(
     return listing_to_out(listing, current_user.full_name)
 
 
-@router.get("/me/incoming-interests", response_model=list[ListingInterestDetailOut])
+@router.get(
+    "/me/incoming-interests",
+    response_model=list[ListingInterestDetailOut],
+    summary="Входящие отклики на мои объявления",
+    responses={401: {"description": "Требуется авторизация"}},
+)
 async def get_my_incoming_interests(
     db: DbSession, current_user: CurrentUser
 ) -> list[ListingInterestDetailOut]:
+    """Все ожидающие (`pending`) отклики на объявления текущего пользователя."""
     rows = await db.execute(
         select(ListingInterest, Listing.title, User.full_name)
         .join(Listing, Listing.id == ListingInterest.listing_id)
@@ -81,13 +98,24 @@ async def get_my_incoming_interests(
     ]
 
 
-@router.patch("/{listing_id}", response_model=ListingOut)
+@router.patch(
+    "/{listing_id}",
+    response_model=ListingOut,
+    summary="Редактировать объявление",
+    responses={
+        200: {"description": "Объявление обновлено"},
+        400: {"description": "Обязательное поле передано пустым"},
+        403: {"description": "Редактировать может только автор"},
+        404: {"description": "Объявление не найдено"},
+    },
+)
 async def update_listing(
     listing_id: int,
     payload: ListingUpdate,
     db: DbSession,
     current_user: CurrentUser,
 ) -> ListingOut:
+    """Частично обновляет объявление. Менять может только его автор."""
     listing = await db.get(Listing, listing_id)
     if listing is None:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
@@ -120,12 +148,21 @@ async def update_listing(
     return listing_to_out(listing, current_user.full_name)
 
 
-@router.get("/{listing_id}/interests", response_model=list[ListingInterestDetailOut])
+@router.get(
+    "/{listing_id}/interests",
+    response_model=list[ListingInterestDetailOut],
+    summary="Отклики на конкретное объявление",
+    responses={
+        403: {"description": "Отклики видит только автор объявления"},
+        404: {"description": "Объявление не найдено"},
+    },
+)
 async def get_listing_interests(
     listing_id: int,
     db: DbSession,
     current_user: CurrentUser,
 ) -> list[ListingInterestDetailOut]:
+    """Ожидающие отклики на объявление. Доступно только автору объявления."""
     listing = await db.get(Listing, listing_id)
     if listing is None:
         raise HTTPException(status_code=404, detail="Объявление не найдено")
@@ -157,12 +194,21 @@ async def get_listing_interests(
     ]
 
 
-@router.get("", response_model=list[ListingOut])
+@router.get(
+    "",
+    response_model=list[ListingOut],
+    summary="Лента объявлений",
+    responses={200: {"description": "Список объявлений с именами авторов"}},
+)
 async def get_listings(
     db: DbSession,
     status_filter: Annotated[ListingStatus | None, Query(alias="status")] = ListingStatus.published,
     author_id: int | None = None,
 ) -> list[ListingOut]:
+    """Возвращает объявления с фильтрами по статусу (`status`) и автору (`author_id`).
+
+    По умолчанию показываются только опубликованные объявления активных пользователей.
+    """
     stmt = (
         select(Listing, User.full_name)
         .join(User, User.id == Listing.author_id)
@@ -181,6 +227,13 @@ async def get_listings(
     "/{listing_id}/interests",
     response_model=ListingInterestOut,
     status_code=status.HTTP_201_CREATED,
+    summary="Откликнуться на объявление",
+    responses={
+        201: {"description": "Отклик создан"},
+        400: {"description": "Нельзя откликнуться на собственное объявление"},
+        404: {"description": "Объявление не найдено или снято с публикации"},
+        409: {"description": "Отклик от этого пользователя уже существует"},
+    },
 )
 async def create_listing_interest(
     listing_id: int,
@@ -188,6 +241,7 @@ async def create_listing_interest(
     db: DbSession,
     current_user: CurrentUser,
 ) -> ListingInterest:
+    """Создаёт отклик текущего пользователя на чужое опубликованное объявление."""
     listing = await db.get(Listing, listing_id)
     if listing is None or listing.status != ListingStatus.published:
         raise HTTPException(status_code=404, detail="Listing not found")
