@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime, timedelta
 
 import bcrypt
@@ -12,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.settings import settings
 from app.models.user import User
 from app.schemas.user import UserLogin, UserRegister
+
+logger = logging.getLogger("app.auth")
 
 
 def hash_password(password: str) -> str:
@@ -34,6 +37,7 @@ def create_access_token(user_id: int, role: str) -> str:
 async def register_user(db: AsyncSession, data: UserRegister) -> User:
     existing = await db.scalar(select(User.id).where(User.email == data.email))
     if existing is not None:
+        logger.warning("Registration rejected: email %s already exists", data.email)
         raise HTTPException(
             status_code=409,
             detail="Пользователь с таким email уже зарегистрирован",
@@ -46,7 +50,9 @@ async def register_user(db: AsyncSession, data: UserRegister) -> User:
     try:
         await db.flush()
     except IntegrityError as exc:
+        logger.warning("Registration race condition on email %s", data.email)
         raise HTTPException(status_code=409, detail="Email уже зарегистрирован") from exc
+    logger.info("New user registered: id=%s email=%s", user.id, user.email)
     return user
 
 
@@ -55,6 +61,9 @@ async def login_user(db: AsyncSession, data: UserLogin) -> str:
     user = result.scalar_one_or_none()
 
     if user is None or not verify_password(data.password, user.password_hash):
+        logger.warning("Failed login attempt for email %s", data.email)
         raise HTTPException(status_code=401, detail="Неверный пароль или email")
 
-    return create_access_token(user.id, user.role)
+    token = create_access_token(user.id, user.role)
+    logger.info("Login OK, JWT issued for user id=%s role=%s", user.id, user.role)
+    return token

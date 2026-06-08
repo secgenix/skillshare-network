@@ -17,7 +17,7 @@ from app.api.errors import (
 )
 from app.api.router import router as api_router
 from app.core.settings import settings
-from app.db.session import engine
+from app.db.session import check_database_connection, engine
 from app.logging.logging_config import setup_logging
 from app.logging.logging_middleware import logging_middleware
 
@@ -28,6 +28,7 @@ STATIC_DIR = BASE_DIR / "static"
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging()
+    await check_database_connection()
 
     yield
 
