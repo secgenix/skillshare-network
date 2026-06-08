@@ -38,12 +38,58 @@
 
 ## Структура репозитория
 
+Верхний уровень:
+
 - `pyproject.toml`, `uv.lock`, `.python-version`: конфигурация uv-проекта (в корне)
 - `.env`, `.env.example`: переменные окружения (в корне)
 - `main.py`: точка входа для запуска из корня (реэкспортирует `app` из `backend/app`)
-- `backend/`: FastAPI-приложение, DB слой и миграции Alembic
+- `backend/`: FastAPI-приложение, DB-слой и миграции Alembic
 - `frontend/`: React-приложение (Vite + TailwindCSS)
-- `docker-compose.yml`: PostgreSQL + backend
+- `docker-compose.yml` / `docker-compose.prod.yml`: оркестрация dev / prod
+- `Documentation/`: архитектура, руководство администратора и описание системы
+
+Структура backend-приложения (`backend/app/`):
+
+```text
+backend/
+├── alembic/              # миграции схемы БД (env.py + versions/)
+├── alembic.ini           # конфиг Alembic
+├── gunicorn_conf.py      # настройки прод-сервера Gunicorn/Uvicorn worker
+├── entrypoint.sh         # точка входа контейнера (миграции + запуск)
+├── Dockerfile            # multi-stage сборка backend-образа
+└── app/
+    ├── main.py           # создание FastAPI-приложения (create_app)
+    ├── api/              # HTTP-слой: роутеры, зависимости, обработчики ошибок
+    │   ├── deps.py       # DI: сессия БД, текущий пользователь
+    │   ├── errors.py     # глобальные exception-handlers
+    │   ├── router.py     # сборка всех роутеров под /api
+    │   └── v1/           # эндпоинты: auth, users, listings, exchanges, chat, …
+    ├── core/             # настройки приложения (pydantic-settings)
+    ├── crud/             # запросы к БД (репозиторный слой)
+    ├── db/               # engine, сессии, базовый класс моделей
+    ├── logging/          # конфиг логирования и middleware
+    ├── models/           # ORM-модели SQLAlchemy
+    ├── policies/         # бизнес-правила (например, правила переписки)
+    ├── schemas/          # Pydantic-схемы запросов/ответов
+    ├── services/         # бизнес-логика (auth, обмены, профили)
+    └── ws/               # менеджер WebSocket-соединений чата
+```
+
+## Карта переменных окружения
+
+Все настройки читаются из `.env` в корне репозитория с префиксом `SSN_`
+(см. `backend/app/core/settings.py`). Значения в таблице — демонстрационные/безопасные.
+
+| Переменная | Тип | Назначение | Пример (безопасный) |
+| --- | --- | --- | --- |
+| `SSN_ENVIRONMENT` | string | Окружение запуска (`local` / `production`). Влияет на режим отладки и строгость настроек | `local` |
+| `SSN_SECRET_KEY` | string | Секрет для подписи JWT-токенов. В проде — длинная случайная строка | `change-me-in-production` |
+| `SSN_DATABASE_URL` | string (DSN) | Строка подключения к PostgreSQL (драйвер asyncpg) | `postgresql+asyncpg://postgres:postgres@localhost:5432/skillshare` |
+| `SSN_REDIS_URL` | string (DSN) | Адрес Redis (кэш/брокер, задел на следующий спринт) | `redis://localhost:6379/0` |
+| `SSN_PUBLIC_BASE_URL` | URL \| пусто | Внешний базовый URL приложения для генерации абсолютных ссылок | `https://skillshare.example.com` |
+
+> Реальные пароли и ключи в репозиторий не коммитятся. `.env` хранится локально и
+> добавлен в `.gitignore`; в репозитории лежит только `.env.example` с шаблонными значениями.
 
 ## Быстрый старт (локально)
 
@@ -60,6 +106,19 @@ uv run uvicorn main:app --reload
 Открыть:
 - `http://localhost:8000/` (SSR страница)
 - `http://localhost:8000/api/health` (healthcheck)
+
+`uv` сам создаёт и поддерживает виртуальное окружение в `.venv/` — отдельную
+команду `python -m venv` выполнять не нужно. Чтобы войти в окружение вручную:
+`source .venv/bin/activate` (Linux/macOS) или `.venv\Scripts\activate` (Windows).
+
+### Frontend (dev-режим)
+
+```bash
+cd frontend
+npm install
+npm run dev          # Vite dev-сервер на http://localhost:5173
+npm run lint         # ESLint
+```
 
 ### Ruff
 
