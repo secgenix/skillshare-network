@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from pydantic import AnyUrl
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+# Корень репозитория: settings.py лежит в backend/app/core/, поэтому поднимаемся
+# на 4 уровня. Абсолютный путь к .env позволяет читать его из любой рабочей
+# директории (например, при запуске Alembic из backend/).
+_ROOT_ENV = Path(__file__).resolve().parents[3] / ".env"
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", env_prefix="SSN_", extra="ignore")
+    model_config = SettingsConfigDict(env_file=_ROOT_ENV, env_prefix="SSN_", extra="ignore")
 
     app_name: str = "SkillShare Network"
     environment: str = "local"
