@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Award,
+  Bell,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -15,7 +16,6 @@ import {
   Zap,
 } from 'lucide-react'
 import { api } from '../api/client.js'
-import ListingEditForm from '../components/listings/ListingEditForm.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import LoadingHint from '../components/ui/LoadingHint.jsx'
 import { initialsFromName } from '../lib/userDisplay.js'
@@ -455,119 +455,9 @@ function ProfilePage() {
     return () => {
       cancelled = true
     }
-  }, [userId, reload])
+  }, [userId])
 
-  const displayName = profile?.full_name?.trim() || email?.split('@')[0] || 'Пользователь'
   const initials = initialsFromName(profile?.full_name, email)
-
-  const handleSaveName = async (e) => {
-    e.preventDefault()
-    setActionError(null)
-    try {
-      const updated = await api.updateMyProfile({ full_name: editName.trim() || null })
-      setProfile(updated)
-      setEditOpen(false)
-    } catch (err) {
-      setActionError(err.message || 'Не удалось сохранить')
-    }
-  }
-
-  const handleAddSkill = async (e) => {
-    e.preventDefault()
-    const name = newSkillName.trim()
-    if (!name) return
-    setActionError(null)
-    try {
-      if (addSkillOpen === 'offered') {
-        await api.addOfferedSkill({ name })
-      } else {
-        await api.addWantedSkill({ name })
-      }
-      setNewSkillName('')
-      setAddSkillOpen(null)
-      const sk = await api.mySkills()
-      setSkills(sk)
-    } catch (err) {
-      setActionError(err.message || 'Не удалось добавить навык')
-    }
-  }
-
-  const handleRemoveSkill = async (kind, skillId) => {
-    setActionError(null)
-    try {
-      if (kind === 'offered') await api.removeOfferedSkill(skillId)
-      else await api.removeWantedSkill(skillId)
-      const sk = await api.mySkills()
-      setSkills(sk)
-    } catch (err) {
-      setActionError(err.message || 'Не удалось удалить навык')
-    }
-  }
-
-  const handleUpdateListing = async (listingId, form) => {
-    setActionError(null)
-    setListingSaveBusy(true)
-    try {
-      await api.updateListing(listingId, {
-        title: form.title.trim(),
-        offering_summary: form.offering_summary.trim(),
-        seeking_summary: form.seeking_summary.trim(),
-        description: form.description.trim() || null,
-      })
-      setEditingListingId(null)
-      const [prof, list] = await Promise.all([api.myProfile(), api.listings({ author_id: userId })])
-      setProfile(prof)
-      setMyListings(list)
-    } catch (err) {
-      setActionError(err.message || 'Не удалось сохранить объявление')
-    } finally {
-      setListingSaveBusy(false)
-    }
-  }
-
-  const handleCreateListing = async (e) => {
-    e.preventDefault()
-    setActionError(null)
-    try {
-      await api.createListing({
-        title: listingForm.title.trim(),
-        offering_summary: listingForm.offering_summary.trim(),
-        seeking_summary: listingForm.seeking_summary.trim(),
-        description: listingForm.description.trim() || null,
-        status: 'published',
-      })
-      setListingForm({ title: '', offering_summary: '', seeking_summary: '', description: '' })
-      setListingOpen(false)
-      const [prof, list] = await Promise.all([api.myProfile(), api.listings({ author_id: userId })])
-      setProfile(prof)
-      setMyListings(list)
-    } catch (err) {
-      setActionError(err.message || 'Не удалось создать объявление')
-    }
-  }
-
-  const handleCopyToken = async () => {
-    if (!token) return
-    try {
-      await navigator.clipboard.writeText(token)
-      setTokenCopied(true)
-      setTimeout(() => setTokenCopied(false), 2000)
-    } catch {
-      setActionError('Не удалось скопировать токен')
-    }
-  }
-
-  if (loading) {
-    return (
-      <p className="py-16 text-center text-sm text-slate-400">Загрузка профиля…</p>
-    )
-  }
-
-  if (error) {
-    return (
-      <p className="py-16 text-center text-sm text-red-400">{error}</p>
-    )
-  }
 
   const handleUpdateProfile = async (payload) => {
     const updated = await api.updateMe(payload)
@@ -971,48 +861,6 @@ function ProfilePage() {
           </>}
         </div>
       </div>
-
-      {editOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="edit-profile-title"
-        >
-          <form
-            onSubmit={handleSaveName}
-            className="w-full max-w-md rounded-3xl border border-white/10 bg-slate-900 p-6"
-          >
-            <h2 id="edit-profile-title" className="mb-4 text-lg font-black text-white">
-              Редактировать профиль
-            </h2>
-            <label className="block text-left text-xs text-slate-400">
-              Имя
-              <input
-                value={editName}
-                onChange={(e) => setEditName(e.target.value)}
-                className="mt-1 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500"
-                placeholder="Как вас показывать в сети"
-              />
-            </label>
-            <div className="mt-6 flex gap-2">
-              <button
-                type="submit"
-                className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-black uppercase text-white"
-              >
-                Сохранить
-              </button>
-              <button
-                type="button"
-                onClick={() => setEditOpen(false)}
-                className="flex-1 rounded-xl border border-white/10 py-2 text-xs text-slate-400"
-              >
-                Отмена
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
     </div>
   )
 }
