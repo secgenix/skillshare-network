@@ -33,13 +33,13 @@ function CreateListingModal({ onClose, onCreated }) {
     setSaving(true)
     setError(null)
     try {
-      await api.createListing({
+      const created = await api.createListing({
         title: form.title.trim(),
         description: form.description.trim() || null,
         offering_summary: form.offering_summary.trim(),
         seeking_summary: form.seeking_summary.trim(),
       })
-      onCreated()
+      onCreated(created)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -209,9 +209,11 @@ function DealsPage() {
     }
   }
 
-  const handleCreated = async () => {
+  const handleCreated = (created) => {
     setCreateOpen(false)
-    await loadListings()
+    // Используем объект из ответа POST, а не повторный GET: показываем сразу,
+    // без гонки с асинхронным коммитом на бэкенде и без мигания «Загрузка…».
+    if (created) setListings((prev) => [created, ...prev])
   }
 
   return (
