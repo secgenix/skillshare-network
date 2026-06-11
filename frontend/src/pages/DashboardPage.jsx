@@ -66,7 +66,8 @@ function DashboardPage() {
       } finally {
         if (!cancelled) setLoading(false)
       }
-    })()
+      })()
+    })
     return () => { cancelled = true }
   }, [isAuthenticated])
 

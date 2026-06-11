@@ -18,6 +18,7 @@ import { api } from '../api/client.js'
 import ListingEditForm from '../components/listings/ListingEditForm.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import LoadingHint from '../components/ui/LoadingHint.jsx'
+import { initialsFromName } from '../lib/userDisplay.js'
 
 // Профиль считается заполненным если есть имя
 function isProfileComplete(profile) {
@@ -628,15 +629,6 @@ function ProfilePage() {
       }))
     }
   }
-
-  const initials = profile?.full_name
-    ? profile.full_name
-        .split(' ')
-        .map((w) => w[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2)
-    : (email?.[0] ?? '?').toUpperCase()
 
   if (loading) {
     return (
