@@ -214,48 +214,6 @@ function DealsPage() {
     await loadListings()
   }
 
-  const isOwnListing =
-    selected != null && userId != null && Number(selected.authorId) === Number(userId)
-
-  const closeModal = useCallback(() => {
-    setSelected(null)
-    setInterestMessage('')
-    setInterestFeedback(null)
-  }, [])
-
-  useEffect(() => {
-    if (!selected) return undefined
-    const onKey = (e) => {
-      if (e.key === 'Escape') closeModal()
-    }
-    document.body.style.overflow = 'hidden'
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = ''
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [selected, closeModal])
-
-  const submitInterest = async () => {
-    if (!selected || isOwnListing) return
-    setInterestBusy(true)
-    setInterestFeedback(null)
-    try {
-      await api.createListingInterest(selected.id, {
-        message: interestMessage.trim() || undefined,
-      })
-      setInterestFeedback({
-        type: 'ok',
-        text: 'Отклик отправлен. Автор объявления увидит его и сможет принять — тогда сделка появится в «Сообщениях».',
-      })
-      setInterestMessage('')
-    } catch (e) {
-      setInterestFeedback({ type: 'err', text: e.message })
-    } finally {
-      setInterestBusy(false)
-    }
-  }
-
   return (
     <div className="animate-page space-y-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
