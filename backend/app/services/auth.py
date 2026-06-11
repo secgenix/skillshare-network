@@ -48,10 +48,11 @@ async def register_user(db: AsyncSession, data: UserRegister) -> User:
     )
     db.add(user)
     try:
-        await db.flush()
+        await db.commit()
     except IntegrityError as exc:
         logger.warning("Registration race condition on email %s", data.email)
         raise HTTPException(status_code=409, detail="Email уже зарегистрирован") from exc
+    await db.refresh(user)
     logger.info("New user registered: id=%s email=%s", user.id, user.email)
     return user
 
