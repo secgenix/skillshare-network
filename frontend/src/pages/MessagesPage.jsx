@@ -317,6 +317,20 @@ function MessagesPage() {
     }
   }
 
+  // Принять входящий отклик на своё объявление — создаётся сделка, она появится в списке слева
+  const acceptIncoming = async (listingId, responderId) => {
+    setActionBusy(true)
+    setError(null)
+    try {
+      await api.acceptInterest(listingId, responderId)
+      await loadExchanges()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setActionBusy(false)
+    }
+  }
+
   const selected = exchanges.find((e) => e.id === selectedId)
   const title = selected?.partner_name
     ? `${selected.partner_name} (#${selected.id})`
@@ -356,6 +370,34 @@ function MessagesPage() {
         </div>
 
         <div className="custom-scrollbar flex-1 overflow-y-auto px-3 pb-4">
+          {incomingInterests.length > 0 ? (
+            <div className="mb-3 space-y-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3">
+              <p className="px-1 text-[10px] font-black uppercase tracking-widest text-amber-400">
+                Входящие отклики ({incomingInterests.length})
+              </p>
+              {incomingInterests.map((it) => (
+                <div key={it.id} className="rounded-xl border border-white/5 bg-white/5 p-3">
+                  <p className="truncate text-xs font-bold text-white">
+                    {it.responder_full_name ?? `Пользователь #${it.responder_id}`}
+                  </p>
+                  <p className="mt-0.5 truncate text-[10px] text-slate-500">
+                    на «{it.listing_title}»
+                  </p>
+                  {it.message ? (
+                    <p className="mt-1 line-clamp-2 text-[11px] text-slate-400">{it.message}</p>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => acceptIncoming(it.listing_id, it.responder_id)}
+                    disabled={actionBusy}
+                    className="mt-2 w-full rounded-lg bg-indigo-600 py-1.5 text-[10px] font-black uppercase tracking-widest text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                  >
+                    Принять отклик
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
           {loadingList ? (
             <div className="px-2">
               <LoadingHint label="Загрузка…" />
@@ -530,6 +572,10 @@ function MessagesPage() {
               )}
               <div ref={bottomRef} />
             </div>
+
+            {selected?.status === 'completed' ? (
+              <ReviewPanel exchangeId={selected.id} userId={userId} />
+            ) : null}
 
             {/* Ввод */}
             <div className="border-t border-white/5 bg-slate-900/50 p-4 sm:p-6">
