@@ -123,6 +123,7 @@ function MessagesPage() {
   const [error, setError] = useState(null)
   const [loadingList, setLoadingList] = useState(false)
   const [loadingMsg, setLoadingMsg] = useState(false)
+  const [actionBusy, setActionBusy] = useState(false)
   const wsRef = useRef(null)
   const bottomRef = useRef(null)
   // Кэш exchange_id → chat_id, не вызывает ре-рендер
@@ -483,9 +484,10 @@ function MessagesPage() {
                   <button
                     type="button"
                     onClick={confirmDone}
-                    className="rounded-xl bg-indigo-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500"
+                    disabled={actionBusy}
+                    className="rounded-xl bg-indigo-600 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-white shadow-lg shadow-indigo-500/20 transition hover:bg-indigo-500 disabled:opacity-50"
                   >
-                    Подтвердить выполнение
+                    {actionBusy ? 'Подтверждаем…' : 'Подтвердить выполнение'}
                   </button>
                 ) : null}
               </div>
