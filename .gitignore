@@ -86,3 +86,7 @@ dist/
 build/
 .eslintcache
 frontend/node_modules/
+
+# Backups (Спринт 4) — дампы БД (.sql) и архивы медиа (.tar.gz) не коммитим,
+# на GitHub уходят только тексты скриптов в scripts/
+backups/data/
